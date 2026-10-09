@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Goose Valley 2D Deluxe — Stardew + Untitled Goose Sanctuary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Top HUD -->
+    <header class="top-bar">
+      <div class="brand-box">
+        <span class="logo">🌾🪿</span>
+        <div>
+          <h1>Goose Valley 2D Deluxe</h1>
+          <span class="tag">Living Farm • Gosling Trains • Byte the Sheepdog</span>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-badge">
+          <span>🪙 Gold</span>
+          <strong id="hud-gold">220g</strong>
+        </div>
+        <div class="stat-badge">
+          <span>🌿 Cozy Zen</span>
+          <strong id="hud-zen">150</strong>
+        </div>
+        <div class="stat-badge">
+          <span>🪿 Flock & Babies</span>
+          <strong id="hud-geese">5 + 6🐣</strong>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <div class="weather-bar" title="Switch Weather & Atmosphere">
+          <button class="weather-chip active" data-weather="sunny">☀️ Sunny</button>
+          <button class="weather-chip" data-weather="rain">🌧️ Cozy Rain</button>
+          <button class="weather-chip" data-weather="sunset">🌅 Sunset</button>
+          <button class="weather-chip" data-weather="night">🌙 Lantern Night</button>
+        </div>
+        <button id="btn-whistle-dog" class="action-pill highlight-pill" title="Press [F] to call Byte the Border Collie to guard your crops!">
+          🐶 Whistle Byte [F]
+        </button>
+        <button id="btn-buy-sprinkler" class="action-pill" title="Auto-waters a 3x3 crop area around you!">
+          💦 Auto-Sprinkler (85g)
+        </button>
+        <button id="btn-adopt-goose" class="action-pill" title="Adopt a Goose + 2 trailing Baby Goslings!">
+          🪿🐣 Adopt Family (80g)
+        </button>
+        <button id="btn-mute" class="action-pill">🔊 Audio On</button>
+      </div>
+    </header>
+
+    <!-- Left Seed & Crop Market Bar -->
+    <aside class="side-card left-card">
+      <div class="card-title">🌱 Seed Satchel & Crop Market</div>
+      <p class="card-sub">Select crop to plant with Tool [2] (Auto-tills & buys!):</p>
+      <div id="seed-selector" class="seed-list"></div>
+
+      <div class="controls-box">
+        <div class="card-title">🎮 Living World Guide</div>
+        <p>🚶 <strong>WASD / Arrows</strong> or <strong>Left-Click</strong> to Walk & Use Tool</p>
+        <p>🍎 <strong>Click Apple Trees</strong> to shake down free Organic Apples!</p>
+        <p>🍯 <strong>Click Artisan Jam Press</strong> to collect high-value Jam</p>
+        <p>🐶 <strong>[F] Key</strong>: Whistle Byte the Sheepdog to chase thieves</p>
+        <p>🔔 <strong>Spacebar</strong>: Ring Sudo Shoo Bell • <strong>Right-Click</strong>: Toss Bread</p>
+      </div>
+    </aside>
+
+    <!-- Right Retirement Quests Clipboard -->
+    <aside class="side-card right-card">
+      <div class="card-title">📋 Sanctuary Milestones</div>
+      <div id="quest-list" class="quest-list"></div>
+    </aside>
+
+    <!-- Bottom Stardew-Style Tool Hotbar (1 to 8) -->
+    <nav id="tool-hotbar" class="hotbar"></nav>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
