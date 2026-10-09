@@ -11,7 +11,7 @@
 ### 😊 Joyful Retired Dev Farmer & Multi-Biome Sanctuary
 - **Expressive Character Art**: Play as a beaming Retired Developer with sparkling eyes, rosy cheeks, a big cheerful smile, a fluttering red scarf, denim overalls with golden brass buttons, a daisy straw hat, and floating musical whistle notes (`♪`).
 - **Rich Living World Map**:
-  - **🏡 Post-IT Retirement Cottage** with glowing windows and rising chimney smoke puffs.
+  - **🏡 Interactive Post-IT Retirement Cottage**: Walk inside (or click the cottage) to turn the sanctuary to starry night, play a soothing **5-second procedural music-box lullaby** while `💤 Zzz...` & `🎵 ♪` float above the glowing roof, and wake up the next sunny morning with ripened crops, regrown orchard apples, brewed jam, a fresh Golden Egg, and `+60 Cozy Zen`!
   - **🌬️ Spinning Dutch Windmill** on the eastern hill.
   - **🍎 Shakeable Apple Orchard**: Click any apple tree to shake down ripe organic apples for instant Gold!
   - **🛶 Winding River, Wooden Bridges, Sandy Shore & Bobbing Rowboat** on the crystal lake.

@@ -205,6 +205,101 @@ class Sound2DEngine {
     };
     setTimeout(loop, 1200);
   }
+
+  /**
+   * 5-Second Dreamy Music-Box Lullaby when sleeping in the Cozy Cottage!
+   */
+  playSleepLullaby() {
+    this.init();
+    if (this.muted || !this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    // Gentle descending & cradling pentatonic music-box notes (C major 9th / F major 7th)
+    const lullabyNotes = [
+      { f: 523.25, t: 0.0, d: 1.2 },  // C5
+      { f: 659.25, t: 0.35, d: 1.2 }, // E5
+      { f: 587.33, t: 0.7, d: 1.4 },  // D5
+      { f: 392.00, t: 1.15, d: 1.6 }, // G4
+      { f: 440.00, t: 1.7, d: 1.2 },  // A4
+      { f: 523.25, t: 2.1, d: 1.3 },  // C5
+      { f: 392.00, t: 2.55, d: 1.5 }, // G4
+      { f: 329.63, t: 3.05, d: 1.8 }, // E4
+      { f: 349.23, t: 3.55, d: 1.2 }, // F4
+      { f: 293.66, t: 3.95, d: 1.2 }, // D4
+      { f: 261.63, t: 4.35, d: 1.8 }, // C4 warm resolve
+    ];
+
+    // Warm underlying dream pad chord
+    [130.81, 196.0, 246.94, 329.63].forEach((padFreq) => {
+      const pad = this.ctx.createOscillator();
+      pad.type = 'sine';
+      pad.frequency.setValueAtTime(padFreq, now);
+      const padGain = this.ctx.createGain();
+      padGain.gain.setValueAtTime(0.001, now);
+      padGain.gain.linearRampToValueAtTime(0.04, now + 0.8);
+      padGain.gain.setValueAtTime(0.04, now + 3.8);
+      padGain.gain.exponentialRampToValueAtTime(0.0005, now + 5.1);
+      pad.connect(padGain);
+      padGain.connect(this.master);
+      pad.start(now);
+      pad.stop(now + 5.2);
+    });
+
+    // Music box bell plucks
+    lullabyNotes.forEach(({ f, t, d }) => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, now + t);
+
+      // Subtle harmonic overtone for celesta / music-box shimmer
+      const overtone = this.ctx.createOscillator();
+      overtone.type = 'triangle';
+      overtone.frequency.setValueAtTime(f * 2, now + t);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now + t);
+      gain.gain.linearRampToValueAtTime(0.14, now + t + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0008, now + t + d);
+
+      const overGain = this.ctx.createGain();
+      overGain.gain.setValueAtTime(0.001, now + t);
+      overGain.gain.linearRampToValueAtTime(0.03, now + t + 0.02);
+      overGain.gain.exponentialRampToValueAtTime(0.0005, now + t + d * 0.6);
+
+      osc.connect(gain);
+      overtone.connect(overGain);
+      gain.connect(this.master);
+      overGain.connect(this.master);
+
+      osc.start(now + t);
+      overtone.start(now + t);
+      osc.stop(now + t + d + 0.05);
+      overtone.stop(now + t + d + 0.05);
+    });
+  }
+
+  /**
+   * Bright Morning Birds & Sunrise Chime when waking up!
+   */
+  playMorningSunrise() {
+    this.init();
+    if (this.muted || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const notes = [392.0, 493.88, 587.33, 783.99, 987.77]; // G major bright arpeggio
+    notes.forEach((f, i) => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, now + i * 0.08);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now + i * 0.08);
+      gain.gain.linearRampToValueAtTime(0.15, now + i * 0.08 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.55);
+      osc.connect(gain);
+      gain.connect(this.master);
+      osc.start(now + i * 0.08);
+      osc.stop(now + i * 0.08 + 0.6);
+    });
+  }
 }
 
 export const sfx = new Sound2DEngine();

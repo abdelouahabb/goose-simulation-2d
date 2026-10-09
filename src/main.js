@@ -23,9 +23,22 @@ export class GooseValleyGame {
     // Economy & Time
     this.gold = 220;
     this.zenScore = 150;
+    this.day = 1;
     this.selectedTool = 'hoe';
     this.selectedCrop = 'carrot';
     this.weather = 'sunny'; // 'sunny' | 'rain' | 'sunset' | 'night'
+
+    // Cozy Cottage Sleep State (5-second Night Lullaby -> Morning Sunrise!)
+    this.isSleeping = false;
+    this.sleepTimer = 0;
+    this.sleepDuration = 5.0;
+    this.sleepCooldown = 0;
+    this.stars = Array.from({ length: 45 }, () => ({
+      x: Math.random(),
+      y: Math.random() * 0.65,
+      size: 1.5 + Math.random() * 2.2,
+      phase: Math.random() * Math.PI * 2,
+    }));
 
     this.inventory = {
       carrot: 6,
@@ -521,11 +534,106 @@ export class GooseValleyGame {
     const tileCenterY = (r + 0.5) * TILE_SIZE;
     const distToPlayer = Math.hypot(this.player.x - tileCenterX, this.player.y - tileCenterY);
 
+    // If player clicked on the Cozy Retirement Cottage (tiles[r][c] === 4), walk to front door and sleep!
+    if (this.tiles[r][c] === 4) {
+      const doorX = 9.75 * TILE_SIZE;
+      const doorY = 6.5 * TILE_SIZE;
+      if (Math.hypot(this.player.x - doorX, this.player.y - doorY) < TILE_SIZE * 2.2) {
+        this.startSleepInCottage();
+      } else {
+        this.player.targetDest = {
+          x: doorX,
+          y: doorY,
+          c: 9,
+          r: 6,
+          sleepOnArrive: true,
+        };
+      }
+      return;
+    }
+
     if (distToPlayer > TILE_SIZE * 3.0) {
       this.player.targetDest = { x: tileCenterX, y: tileCenterY, c, r, executeOnArrive: true };
     } else {
       this.useToolOnTile(c, r);
     }
+  }
+
+  /**
+   * Enter the Cozy Retirement Cottage to sleep for 5 seconds with a relaxing night lullaby!
+   */
+  startSleepInCottage() {
+    if (this.isSleeping || this.sleepCooldown > 0) return;
+
+    this.isSleeping = true;
+    this.sleepTimer = 0;
+    this.player.vx = 0;
+    this.player.vy = 0;
+    this.player.targetDest = null;
+
+    // Position Farmer inside cottage doorway & curl Byte by the porch
+    this.player.x = 9.75 * TILE_SIZE;
+    this.player.y = 6.2 * TILE_SIZE;
+    this.dog.x = 8.4 * TILE_SIZE;
+    this.dog.y = 7.1 * TILE_SIZE;
+
+    // Transition atmosphere to starry night & play 5-second music-box lullaby
+    this.weather = 'night';
+    document.querySelectorAll('[data-weather]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.weather === 'night');
+    });
+
+    sfx.playSleepLullaby();
+    this.addFloatingText(
+      this.player.x,
+      this.player.y - 45,
+      '🛌 Entering Cottage... Sweet Dreams (0 PagerDuty!) 🌙💤',
+      '#fde047'
+    );
+  }
+
+  wakeUpInMorning() {
+    this.isSleeping = false;
+    this.sleepCooldown = 3.0; // Prevent immediate re-entry while stepping out
+    this.day += 1;
+
+    // Step out onto the sunlit front porch
+    this.player.x = 9.75 * TILE_SIZE;
+    this.player.y = 7.4 * TILE_SIZE;
+
+    // Switch atmosphere to Sunny Morning!
+    this.weather = 'sunny';
+    document.querySelectorAll('[data-weather]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.weather === 'sunny');
+    });
+
+    // Morning Benefits: All planted crops grow +50% (or ripen!), Orchard trees regrow apples, Jam finishes, +60 Zen!
+    this.crops.forEach((plot) => {
+      plot.progress = Math.min(1.0, plot.progress + 0.55);
+    });
+    this.trees.forEach((tree) => {
+      tree.apples = 3;
+    });
+    this.jamPresses.forEach((jp) => {
+      if (jp.state === 'brewing') jp.state = 'ready';
+    });
+
+    // Happy geese lay a fresh morning Golden Egg near the pond!
+    if (this.geese.length > 0) {
+      const luckyGoose = this.geese[Math.floor(Math.random() * this.geese.length)];
+      this.spawnGoldenEgg(luckyGoose.x, luckyGoose.y);
+    }
+
+    this.zenScore += 60;
+    sfx.playMorningSunrise();
+    confetti({ particleCount: 45, spread: 65, origin: { y: 0.6 } });
+    this.addFloatingText(
+      this.player.x,
+      this.player.y - 42,
+      `☀️ Good Morning! Day ${this.day} • Crops Ripened & +60 Cozy Zen!`,
+      '#4ade80'
+    );
+    this.updateHUD();
   }
 
   useToolOnTile(c, r) {
@@ -534,6 +642,11 @@ export class GooseValleyGame {
     const tileType = this.tiles[r][c];
     const cx = (c + 0.5) * TILE_SIZE;
     const cy = (r + 0.5) * TILE_SIZE;
+
+    if (tileType === 4) {
+      this.startSleepInCottage();
+      return;
+    }
 
     this.player.swingTimer = 0.28;
     this.player.facing = cx >= this.player.x ? 1 : -1;
@@ -993,13 +1106,34 @@ export class GooseValleyGame {
   }
 
   update(dt, nowSec) {
-    // 1. Update Farmer Movement
+    if (this.sleepCooldown > 0) this.sleepCooldown -= dt;
+
+    // Handle 5-Second Cozy Cottage Sleep Mode!
+    if (this.isSleeping) {
+      this.sleepTimer += dt;
+      // Emit floating "Zzz" & musical note particles from the cottage roof!
+      if (Math.random() < 0.16) {
+        this.addFloatingText(
+          9.8 * TILE_SIZE + (Math.random() - 0.5) * 70,
+          4.2 * TILE_SIZE,
+          Math.random() < 0.5 ? '💤 Zzz...' : '🎵 ♪',
+          '#fde047'
+        );
+      }
+      if (this.sleepTimer >= this.sleepDuration) {
+        this.wakeUpInMorning();
+      }
+    }
+
+    // 1. Update Farmer Movement (paused while sleeping inside cottage)
     let moveX = 0;
     let moveY = 0;
-    if (this.keys['KeyW'] || this.keys['ArrowUp']) moveY -= 1;
-    if (this.keys['KeyS'] || this.keys['ArrowDown']) moveY += 1;
-    if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveX -= 1;
-    if (this.keys['KeyD'] || this.keys['ArrowRight']) moveX += 1;
+    if (!this.isSleeping) {
+      if (this.keys['KeyW'] || this.keys['ArrowUp']) moveY -= 1;
+      if (this.keys['KeyS'] || this.keys['ArrowDown']) moveY += 1;
+      if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveX -= 1;
+      if (this.keys['KeyD'] || this.keys['ArrowRight']) moveX += 1;
+    }
 
     if (moveX !== 0 || moveY !== 0) {
       this.player.targetDest = null;
@@ -1008,12 +1142,14 @@ export class GooseValleyGame {
       this.player.vy = (moveY / mag) * this.player.speed;
       if (moveX !== 0) this.player.facing = moveX > 0 ? 1 : -1;
       this.player.walkCycle += dt * 13;
-    } else if (this.player.targetDest) {
+    } else if (this.player.targetDest && !this.isSleeping) {
       const dx = this.player.targetDest.x - this.player.x;
       const dy = this.player.targetDest.y - this.player.y;
       const d = Math.hypot(dx, dy);
       if (d < TILE_SIZE * 1.4) {
-        if (this.player.targetDest.executeOnArrive) {
+        if (this.player.targetDest.sleepOnArrive) {
+          this.startSleepInCottage();
+        } else if (this.player.targetDest.executeOnArrive) {
           this.useToolOnTile(this.player.targetDest.c, this.player.targetDest.r);
         }
         this.player.targetDest = null;
@@ -1035,14 +1171,20 @@ export class GooseValleyGame {
     const tc = Math.floor(nextX / TILE_SIZE);
     const tr = Math.floor(nextY / TILE_SIZE);
     if (
+      !this.isSleeping &&
       tc >= 0 &&
       tc < MAP_COLS &&
       tr >= 0 &&
       tr < MAP_ROWS &&
-      this.tiles[tr][tc] !== 1 // Walk on bridges (5), grass (0), sand (6), paths (3), soil (2)
+      this.tiles[tr][tc] !== 1
     ) {
       this.player.x = nextX;
       this.player.y = nextY;
+
+      // If Farmer walks into the Cozy Cottage doorway (tileType === 4), trigger Sleep Mode!
+      if (this.tiles[tr][tc] === 4 && this.sleepCooldown <= 0) {
+        this.startSleepInCottage();
+      }
     }
 
     if (this.player.swingTimer > 0) this.player.swingTimer -= dt;
@@ -1781,9 +1923,9 @@ export class GooseValleyGame {
       ctx.fillText(item.icon, item.x, item.y);
     });
 
-    // 8. Y-Sorted Living Entities (Player, Byte the Dog, Adult Geese, Baby Goslings, Orchard Trees)
+    // 8. Y-Sorted Living Entities (Hide Farmer while sleeping inside the Cozy Cottage!)
     const entities = [
-      { type: 'player', y: this.player.y, obj: this.player },
+      ...(this.isSleeping ? [] : [{ type: 'player', y: this.player.y, obj: this.player }]),
       { type: 'dog', y: this.dog.y, obj: this.dog },
       ...this.geese.map((g) => ({ type: 'goose', y: g.y, obj: g })),
       ...this.goslings.map((b) => ({ type: 'gosling', y: b.y, obj: b })),
@@ -1857,12 +1999,38 @@ export class GooseValleyGame {
 
     ctx.restore();
 
-    // Screen-Space Atmosphere Tint & Warm Lantern Halos for Sunset / Night
-    if (this.weather === 'sunset' || this.weather === 'night') {
+    // Screen-Space Atmosphere Tint & Warm Lantern Halos for Sunset / Night / Sleeping
+    if (this.weather === 'sunset' || this.weather === 'night' || this.isSleeping) {
       ctx.save();
+      let nightAlpha = this.weather === 'sunset' ? 0.18 : 0.52;
+      if (this.isSleeping) {
+        // Smoothly deepen night and fade into golden dawn during the last 1.2s of the 5s sleep!
+        const p = this.sleepTimer / this.sleepDuration;
+        nightAlpha = p < 0.75 ? 0.68 : 0.68 * (1 - (p - 0.75) / 0.25);
+      }
+
       ctx.fillStyle =
-        this.weather === 'sunset' ? 'rgba(234, 88, 12, 0.18)' : 'rgba(15, 23, 42, 0.52)';
+        this.weather === 'sunset' && !this.isSleeping
+          ? `rgba(234, 88, 12, ${nightAlpha})`
+          : `rgba(10, 16, 36, ${nightAlpha})`;
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+      // Twinkling stars when sleeping or at night
+      if (this.isSleeping || this.weather === 'night') {
+        this.stars.forEach((st) => {
+          const twinkle = 0.35 + Math.abs(Math.sin(nowSec * 3 + st.phase)) * 0.65;
+          ctx.fillStyle = `rgba(254, 249, 195, ${twinkle * nightAlpha})`;
+          ctx.beginPath();
+          ctx.arc(
+            st.x * this.canvas.width,
+            st.y * this.canvas.height,
+            st.size,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+        });
+      }
 
       // Additive warm glow around lanterns and cottage windows
       ctx.globalCompositeOperation = 'lighter';
@@ -1877,6 +2045,61 @@ export class GooseValleyGame {
         ctx.arc(sx, sy, 125, 0, Math.PI * 2);
         ctx.fill();
       });
+
+      // Warm Cottage Hearth Glow while sleeping inside!
+      const cottageScreenX = 9.75 * TILE_SIZE - this.camera.x;
+      const cottageScreenY = 5.0 * TILE_SIZE - this.camera.y;
+      const cGrad = ctx.createRadialGradient(
+        cottageScreenX,
+        cottageScreenY,
+        15,
+        cottageScreenX,
+        cottageScreenY,
+        210
+      );
+      cGrad.addColorStop(0, 'rgba(253, 224, 71, 0.52)');
+      cGrad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+      ctx.fillStyle = cGrad;
+      ctx.beginPath();
+      ctx.arc(cottageScreenX, cottageScreenY, 210, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 5-Second Cozy Sleep Lullaby Banner & Progress Bar
+    if (this.isSleeping) {
+      ctx.save();
+      const bx = this.canvas.width / 2;
+      const by = 128;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.65)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(bx - 210, by - 36, 420, 76, 18);
+      ctx.fill();
+      ctx.stroke();
+
+      const remaining = Math.max(0, this.sleepDuration - this.sleepTimer).toFixed(1);
+      ctx.font = 'bold 16px Fredoka, sans-serif';
+      ctx.fillStyle = '#fef08a';
+      ctx.textAlign = 'center';
+      ctx.fillText(`🌙 Sleeping in Cozy Cottage... (${remaining}s to Sunrise) 🎵`, bx, by - 8);
+
+      ctx.font = '12px Inter, sans-serif';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('Music-box lullaby playing • Ripening crops & recharging Zen...', bx, by + 12);
+
+      // Progress track
+      const pct = Math.min(1, this.sleepTimer / this.sleepDuration);
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath();
+      ctx.roundRect(bx - 160, by + 22, 320, 8, 4);
+      ctx.fill();
+
+      ctx.fillStyle = '#4ade80';
+      ctx.beginPath();
+      ctx.roundRect(bx - 160, by + 22, 320 * pct, 8, 4);
+      ctx.fill();
       ctx.restore();
     }
   }
@@ -1943,8 +2166,8 @@ export class GooseValleyGame {
     ctx.fillRect(x, y + 42, w, h - 42);
     ctx.strokeRect(x, y + 42, w, h - 42);
 
-    // Glowing Windows
-    ctx.fillStyle = '#fde047';
+    // Glowing Windows (extra bright warm amber when Farmer is sleeping inside!)
+    ctx.fillStyle = this.isSleeping ? '#fbbf24' : '#fde047';
     ctx.fillRect(x + 32, y + 72, 44, 38);
     ctx.strokeRect(x + 32, y + 72, 44, 38);
     ctx.fillRect(x + w - 76, y + 72, 44, 38);
@@ -1960,7 +2183,12 @@ export class GooseValleyGame {
     ctx.fill();
     ctx.stroke();
 
-    // Arch Door
+    // Arch Door & Welcome Mat
+    ctx.fillStyle = '#d97706';
+    ctx.beginPath();
+    ctx.roundRect(x + w / 2 - 28, y + h - 4, 56, 14, 5);
+    ctx.fill();
+
     ctx.fillStyle = '#78350f';
     ctx.beginPath();
     ctx.roundRect(x + w / 2 - 22, y + h - 62, 44, 62, [16, 16, 0, 0]);
@@ -1970,6 +2198,14 @@ export class GooseValleyGame {
     ctx.font = 'bold 13px Fredoka, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('🏡 POST-IT RETIREMENT COTTAGE', x + w / 2, y + 34);
+
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'bold 11px Inter, sans-serif';
+    ctx.fillText(
+      this.isSleeping ? '💤 Sleeping Inside... Zzz' : '🛌 Walk In or Click to Sleep & Ripen Crops!',
+      x + w / 2,
+      y + h + 22
+    );
   }
 
   drawDutchWindmill(ctx, x, y, nowSec) {
